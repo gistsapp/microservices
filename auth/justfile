@@ -1,0 +1,5 @@
+build:
+    go build -o auth -v
+
+migrate: build
+    BOOTSTRAP=true ./auth && rm ./auth

@@ -1,0 +1,5 @@
+DROP TABLE IF EXISTS federated_identity;
+DROP TABLE IF EXISTS token;
+DROP TABLE IF EXISTS user_entity;
+
+DROP EXTENSION IF EXISTS "uuid-ossp";

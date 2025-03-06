@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  # keycloak:
+  #   image: quay.io/keycloak/keycloak:26.1.2
+  #   container_name: gists-keycloak
+  #   command:
+  #     - "start-dev"
+  #   environment:
+  #     KEYCLOAK_ADMIN: admin
+  #     KEYCLOAK_ADMIN_PASSWORD: admin
+  #     KEYCLOAK_USER: admin
+  #     KEYCLOAK_PASSWORD: admin
+  #     KC_DB_URL_HOST: postgres-keycloak
+  #     KC_DB: postgres
+  #     KC_DB_USERNAME: postgres
+  #     KC_DB_PASSWORD: postgres
+  #   ports:
+  #     - 8080:8080
+  #   depends_on:
+  #     - postgres-keycloak
+  #   networks:
+  #     - gists-network
+  # postgres-keycloak:
+  #   image: postgres:16.3-alpine3.20
+  #   ports:
+  #     - 5433:5432
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #     POSTGRES_DB: keycloak
+  #   volumes:
+  #     - gists-kc-db-vol:/var/lib/postgresql/data
+  #   networks:
+  #     - gists-network
+  postgres:
+    image: postgres:16.3-alpine3.20
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gists
+    ports:
+      - 5432:5432
+    volumes:
+      - gists-db-vol:/var/lib/postgresql/data
+
+volumes:
+  gists-db-vol:
+  gists-kc-db-vol:
+
+networks:
+  gists-network:
+    driver: bridge
+

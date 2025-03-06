@@ -1,0 +1,30 @@
+{
+  "port": "4000",
+  "keycloak": {
+    "realm": "gists",
+    "url": "http://localhost:8080",
+    "client_id" : "...",
+    "client_secret": "..."
+  },
+  "auth_providers": [
+    {
+      "name": "github",
+      "client_id": "client_id",
+      "client_secret": "",
+      "redirect_uri": "http://localhost:4000/auth/github/callback"
+    },
+    {
+      "name": "google",
+      "client_id": "client_id",
+      "client_secret": "",
+      "redirect_uri": "http://localhost:4000/auth/google/callback"
+    }
+  ],
+  "database": {
+    "host": "0.0.0.0",
+    "port": 5432,
+    "user": "postgres",
+    "password": "postgres",
+    "database": "gists"
+  }
+}
