@@ -9,6 +9,7 @@ import (
 
 type UserService interface {
 	GetUserByID(id string) (*types.User, error)
+	GetUserThroughFederatedIdentity(federated_id string) (*types.User, error)
 	CreateUser(user *types.User) (*types.User, error)
 	DeleteUser(id string) error
 	UpdateUser(user *types.User) (*types.User, error)
@@ -54,3 +55,10 @@ func (u *userService) UpdateUser(user *types.User) (*types.User, error) {
 	return user, err
 }
 
+func (u *userService) GetUserThroughFederatedIdentity(federated_id string) (*types.User, error) {
+	user, err := u.db.GetUserThroughFederatedIdentity(federated_id)
+	if err == sql.ErrNoRows {
+		return nil, types.ErrNotFound
+	}
+	return user, err
+}

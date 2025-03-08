@@ -1,23 +1,26 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/gistsapp/api/auth/config"
+	"github.com/gistsapp/api/auth/core"
+	"github.com/gistsapp/api/auth/http"
 	"github.com/gistsapp/api/auth/repositories"
-	"github.com/gistsapp/api/types"
 )
 
+// @title			Gists auth service API
+// @version		0.1
+// @description	This is the API for the Gists auth service
+// @contact.name	Courtcircuits
+// @contact.url	https://github.com/courtcircuits
+// @contact.email	tristan-mihai.radulescu@etu.umontpellier.fr
 func main() {
 	config.LoadConfig() // reads the config file
-
 	conf := config.GetConfig()
 
 	// just testing thhings for now
-
-	db, error:= repositories.NewPgDatabase(conf.Database.User, conf.Database.Password, conf.Database.Host, conf.Database.Port, conf.Database.Database)
-	fmt.Println(db)
+	db, error := repositories.NewPgDatabase(conf.Database.User, conf.Database.Password, conf.Database.Host, conf.Database.Port, conf.Database.Database)
 
 	if error != nil {
 		panic(error)
@@ -29,12 +32,16 @@ func main() {
 			panic(err)
 		}
 	}
+	user_service := core.NewUserService(db)
+	jwt_service := core.NewJWTService(user_service)
+	email_repository := repositories.NewEmailService(conf.EmailService)
+	auth_service := core.NewAuthService(conf.AuthProviders, jwt_service, user_service, db, email_repository)
 
-	user, error := db.CreateUser(&types.User{
-		Username: "mihai",
-		Email:    "mihai@example.com",
-		Picture:  "https://avatars.githubusercontent.com/u/123456?v=4",
-	})
+	auth_handler := http.NewAuthController(auth_service, &conf)
+	docs_handler := http.NewDocsHandler()
 
-	fmt.Println(user)
+	server := http.NewServer(conf.Port)
+	server.Setup(auth_handler, docs_handler)
+	server.Ignite()
+
 }
