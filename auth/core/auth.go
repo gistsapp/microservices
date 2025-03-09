@@ -13,9 +13,9 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/markbates/goth"
-	"github.com/shareed2k/goth_fiber"
 	"github.com/markbates/goth/providers/github"
 	"github.com/markbates/goth/providers/google"
+	"github.com/shareed2k/goth_fiber"
 )
 
 type AuthService interface {
@@ -82,30 +82,28 @@ func (a *authService) IsAuthenticated(token string) (*types.JWTClaims, error) {
 }
 
 func (a *authService) Renew(token string) (*types.AuthTokens, error) {
-	claims, err := a.jwtService.VerifyAccessToken(token)
+    claims, err := a.jwtService.VerifyAccessToken(token)
 
-	if err != jwt.ErrTokenExpired {
-		return nil, err
-	}
+    if err != jwt.ErrTokenExpired {
+        return nil, err
+    }
 
-	refreshToken, err := a.jwtService.CreateRefreshToken(claims.UserID)
+    refreshToken, err := a.jwtService.CreateRefreshToken(claims)
 
-	if err != nil {
-		return nil, err
-	}
+    if err != nil {
+        return nil, err
+    }
 
-	user, err := a.userService.GetUserByID(claims.UserID)
+    accessToken, err := a.jwtService.CreateAccessToken(claims)
 
-	if err != nil {
-		return nil, err
-	}
+    if err != nil {
+        return nil, err
+    }
 
-	accessToken, err := a.jwtService.CreateAccessToken(user)
-
-	return &types.AuthTokens{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-	}, nil
+    return &types.AuthTokens{
+        AccessToken:  accessToken,
+        RefreshToken: refreshToken,
+    }, nil
 }
 
 func (a *authService) Callback(c *fiber.Ctx) (*types.AuthTokens, error) {
@@ -150,18 +148,22 @@ func (a *authService) firstLogin(auth_user goth.User, provider string) (*types.U
 }
 
 func (a *authService) generateTokens(user *types.User) (*types.AuthTokens, error) {
-	access_token, err := a.jwtService.CreateAccessToken(user)
-	if err != nil {
-		return nil, err
-	}
-	refresh_token, err := a.jwtService.CreateRefreshToken(user.ID)
-	if err != nil {
-		return nil, err
-	}
-	return &types.AuthTokens{
-		AccessToken:  access_token,
-		RefreshToken: refresh_token,
-	}, nil
+    claims := &types.JWTClaims{
+        UserID: user.ID,
+    }
+
+    access_token, err := a.jwtService.CreateAccessToken(claims)
+    if err != nil {
+        return nil, err
+    }
+    refresh_token, err := a.jwtService.CreateRefreshToken(claims)
+    if err != nil {
+        return nil, err
+    }
+    return &types.AuthTokens{
+        AccessToken:  access_token,
+        RefreshToken: refresh_token,
+    }, nil
 }
 
 func withOIDCUsername(user goth.User) *RegistrationOptions {
@@ -246,28 +248,28 @@ func (a *authService) AuthenticateWithRedirect(c *fiber.Ctx) error {
 }
 
 func (a *authService) VerifyAuthToken(code string, email string) (*types.AuthTokens, error) {
-	err := a.database.DeleteVerificationToken(email, code)
-	if err == sql.ErrNoRows {
-		return nil, ErrCantCompleteAuth
-	}
+    err := a.database.DeleteVerificationToken(email, code)
+    if err == sql.ErrNoRows {
+        return nil, ErrCantCompleteAuth
+    }
 
-	//now we finish user registration
+    //now we finish user registration
 
-	goth_user := goth.User{
-		UserID:   email,
-		Email:    email,
-		Provider: "local",
-		AvatarURL:  "https://vercel.com/api/www/avatar/?u=" + email + "&s=80",
-	}
+    goth_user := goth.User{
+        UserID:   email,
+        Email:    email,
+        Provider: "local",
+        AvatarURL:  "https://vercel.com/api/www/avatar/?u=" + email + "&s=80",
+    }
 
-	federated_identity, err := a.database.GetFederatedIdentityByID(goth_user.UserID)
-	var user *types.User
-	if err == sql.ErrNoRows { // user not found, create user because first connection
-		user, err = a.RegisterUser(withEmailPrefix(goth_user))
-	}else {
-		user, err = a.userService.GetUserByID(federated_identity.UserID)
-	}
-	return a.generateTokens(user)
+    federated_identity, err := a.database.GetFederatedIdentityByID(goth_user.UserID)
+    var user *types.User
+    if err == sql.ErrNoRows { // user not found, create user because first connection
+        user, err = a.RegisterUser(withEmailPrefix(goth_user))
+    }else {
+        user, err = a.userService.GetUserByID(federated_identity.UserID)
+    }
+    return a.generateTokens(user)
 }
 
 var ErrCantCompleteAuth error = errors.New("Couldn't complete auth")

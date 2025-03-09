@@ -16,38 +16,31 @@ import (
 // @contact.url	https://github.com/courtcircuits
 // @contact.email	tristan-mihai.radulescu@etu.umontpellier.fr
 func main() {
-	config.LoadConfig() // reads the config file
-	conf := config.GetConfig()
+    config.LoadConfig() // reads the config file
+    conf := config.GetConfig()
 
-	// just testing thhings for now
-	db, error := repositories.NewPgDatabase(conf.Database.User, conf.Database.Password, conf.Database.Host, conf.Database.Port, conf.Database.Database)
+    // just testing thhings for now
+    db, error := repositories.NewPgDatabase(conf.Database.User, conf.Database.Password, conf.Database.Host, conf.Database.Port, conf.Database.Database)
 
-	if error != nil {
-		panic(error)
-	}
+    if error != nil {
+        panic(error)
+    }
 
-	if os.Getenv("BOOTSTRAP") == "true" {
-		err := db.Bootstrap()
-		if err != nil {
-			panic(err)
-		}
-	}
-	user_service := core.NewUserService(db)
-	jwt_service := core.NewJWTService(user_service)
-	email_repository := repositories.NewEmailService(conf.EmailService)
-	auth_service := core.NewAuthService(conf.AuthProviders, jwt_service, user_service, db, email_repository)
+    if os.Getenv("BOOTSTRAP") == "true" {
+        err := db.Bootstrap()
+        if err != nil {
+            panic(err)
+        }
+    }
+    user_service := core.NewUserService(db)
+    jwt_service := core.NewJWTService(conf.JWTSecretKey)
+    email_repository := repositories.NewEmailService(conf.EmailService)
+    auth_service := core.NewAuthService(conf.AuthProviders, jwt_service, user_service, db, email_repository)
 
-	auth_handler := http.NewAuthController(auth_service, &conf)
-	docs_handler := http.NewDocsHandler()
+    auth_handler := http.NewAuthController(auth_service, &conf)
+    docs_handler := http.NewDocsHandler()
 
-	server := http.NewServer(conf.Port)
-	server.Setup(auth_handler, docs_handler)
-	server.Ignite()
-
-	fmt.Println(user)
-
-    jwtService := core.NewJWTService("key")
-
-	app := http.NewServer(jwtService)
-    app.Listen(":4000")
+    server := http.NewServer(conf.Port)
+    server.Setup(auth_handler, docs_handler)
+    server.Ignite()
 }

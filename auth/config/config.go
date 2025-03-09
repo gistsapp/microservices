@@ -21,6 +21,7 @@ type Config struct {
 	}
 	EmailService EmailServiceConfig `mapstructure:"email_service"`
 	Cookies CookiesConfig `mapstructure:"cookies"`
+	JWTSecretKey string `mapstructure:"jwt_secret_key"`
 }
 
 type CookiesConfig struct {

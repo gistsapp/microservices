@@ -3,8 +3,9 @@ package http
 import (
 	"log"
 
-	"github.com/gistsapp/api/auth/core"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 )
 
 type Server struct {
@@ -34,13 +35,4 @@ func (s *Server) Setup(handlers ...Handler) {
 
 func (s *Server) Ignite() {
 	log.Fatal(s.app.Listen(s.listen_addr))
-}
-
-func NewServer(jwtService core.JWTService) *fiber.App {
-    app := fiber.New()
-
-    handler := NewHandler(jwtService)
-    handler.Register(app)
-
-    return app
 }
