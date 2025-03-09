@@ -28,7 +28,11 @@ type Database interface {
 	DeleteFederatedIdentity(id string) error
 	CreateOpaqueToken(opaque_token *types.OpaqueToken) (*types.OpaqueToken, error)
 	GetOpaqueTokenByID(id string) (*types.OpaqueToken, error)
+	GetOpaqueTokenByUserEmail(email string) (*types.OpaqueToken, error)
 	DeleteOpaqueToken(id string) error
+	CreateVerificationToken(verification_token *types.VerificationToken) (*types.VerificationToken, error)
+	GetVerificationTokenByEmail(email string) (*types.VerificationToken, error)
+	DeleteVerificationToken(email string, value string) error
 }
 
 type PgDatabase struct {
@@ -113,12 +117,9 @@ func (db *PgDatabase) UpdateUser(user *types.User) (*types.User, error) {
 }
 
 func (db *PgDatabase) CreateFederatedIdentity(federated_identity *types.FederatedIdentity) (*types.FederatedIdentity, error) {
-	var created_federated_identity types.FederatedIdentity
+	var created_federated_identity types.FederatedIdentity // TODO: change to federated_identity_id
 	err := db.db.Get(&created_federated_identity, "INSERT INTO federated_identity_entity (id, user_id, provider, data) VALUES ($1, $2, $3, $4) RETURNING *", federated_identity.ID, federated_identity.UserID, federated_identity.Provider, federated_identity.Data)
-	if err != nil {
-		return nil, err
-	}
-	return &created_federated_identity, nil
+	return &created_federated_identity, err
 }
 
 func (db *PgDatabase) GetFederatedIdentityByID(id string) (*types.FederatedIdentity, error) {
@@ -163,3 +164,49 @@ func (db *PgDatabase) DeleteOpaqueToken(id string) error {
 	}
 	return nil
 }
+
+func (db *PgDatabase) GetOpaqueTokenByUserEmail(email string) (*types.OpaqueToken, error) {
+	var opaque_token types.OpaqueToken
+	err := db.db.Get(&opaque_token, "SELECT * FROM opaque_token_entity WHERE user_id = (SELECT id FROM user_entity WHERE email = $1)", email)
+	if err != nil {
+		return nil, err
+	}
+	return &opaque_token, nil
+}
+
+func (db *PgDatabase) GetUserThroughFederatedIdentity(federated_id string) (*types.User, error) {
+	var user types.User
+	err := db.db.Get(&user, "SELECT * FROM user_entity WHERE user_id = (SELECT user_id FROM federated_identity WHERE federated_identity_id = $1)", federated_id)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (db *PgDatabase) CreateVerificationToken(verification_token *types.VerificationToken) (*types.VerificationToken, error) {
+	var created_verification_token types.VerificationToken
+	err := db.db.Get(&created_verification_token, "INSERT INTO verification_token (token, email) VALUES ($1, $2) RETURNING *", verification_token.Token, verification_token.Email)
+	if err != nil {
+		return nil, err
+	}
+	return &created_verification_token, nil
+}
+
+func (db *PgDatabase) GetVerificationTokenByEmail(email string) (*types.VerificationToken, error) {
+	var verification_token types.VerificationToken
+	err := db.db.Get(&verification_token, "SELECT * FROM verification_token WHERE email = $1", email)
+	if err != nil {
+		return nil, err
+	}
+	return &verification_token, nil
+}
+
+
+func (db *PgDatabase) DeleteVerificationToken(email string, value string) error {
+	_, err := db.db.Exec("DELETE FROM verification_token WHERE email = $1 AND token = $2", email, value)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+

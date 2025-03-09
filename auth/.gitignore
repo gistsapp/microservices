@@ -35,3 +35,6 @@
 vendor/
 vendor
 /Godeps/
+
+# Secrets
+config.json

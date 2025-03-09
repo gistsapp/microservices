@@ -34,3 +34,8 @@ type JWTClaims struct {
 	UserID string `json:"user_id"`
 	jwt.StandardClaims
 }
+
+type VerificationToken struct {
+	Email    string `db:"email"`
+	Token    string `db:"token"`
+}
