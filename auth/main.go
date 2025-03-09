@@ -44,4 +44,10 @@ func main() {
 	server.Setup(auth_handler, docs_handler)
 	server.Ignite()
 
+	fmt.Println(user)
+
+    jwtService := core.NewJWTService("key")
+
+	app := http.NewServer(jwtService)
+    app.Listen(":4000")
 }
