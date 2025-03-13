@@ -19,7 +19,7 @@ func main() {
     config.LoadConfig() // reads the config file
     conf := config.GetConfig()
 
-    // just testing thhings for now
+    // just testing things for now
     db, error := repositories.NewPgDatabase(conf.Database.User, conf.Database.Password, conf.Database.Host, conf.Database.Port, conf.Database.Database)
 
     if error != nil {
@@ -33,7 +33,7 @@ func main() {
         }
     }
     user_service := core.NewUserService(db)
-    jwt_service := core.NewJWTService(conf.JWTSecretKey)
+    jwt_service := core.NewJWTService(conf.JWTSecretKey, db)
     email_repository := repositories.NewEmailService(conf.EmailService)
     auth_service := core.NewAuthService(conf.AuthProviders, jwt_service, user_service, db, email_repository)
 

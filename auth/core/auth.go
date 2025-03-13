@@ -88,7 +88,7 @@ func (a *authService) Renew(token string) (*types.AuthTokens, error) {
         return nil, err
     }
 
-    refreshToken, err := a.jwtService.CreateRefreshToken(claims)
+    refreshToken, err := a.jwtService.CreateRefreshToken(claims.UserID)
 
     if err != nil {
         return nil, err
@@ -156,7 +156,8 @@ func (a *authService) generateTokens(user *types.User) (*types.AuthTokens, error
     if err != nil {
         return nil, err
     }
-    refresh_token, err := a.jwtService.CreateRefreshToken(claims)
+	
+    refresh_token, err := a.jwtService.CreateRefreshToken(user.ID)
     if err != nil {
         return nil, err
     }

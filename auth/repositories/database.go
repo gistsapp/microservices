@@ -29,6 +29,7 @@ type Database interface {
 	CreateOpaqueToken(opaque_token *types.OpaqueToken) (*types.OpaqueToken, error)
 	GetOpaqueTokenByID(id string) (*types.OpaqueToken, error)
 	GetOpaqueTokenByUserEmail(email string) (*types.OpaqueToken, error)
+	GetOpaqueTokenByToken(token string) (*types.OpaqueToken, error)
 	DeleteOpaqueToken(id string) error
 	CreateVerificationToken(verification_token *types.VerificationToken) (*types.VerificationToken, error)
 	GetVerificationTokenByEmail(email string) (*types.VerificationToken, error)
@@ -172,6 +173,15 @@ func (db *PgDatabase) GetOpaqueTokenByUserEmail(email string) (*types.OpaqueToke
 		return nil, err
 	}
 	return &opaque_token, nil
+}
+
+func (db *PgDatabase) GetOpaqueTokenByToken(token string) (*types.OpaqueToken, error) {
+    var opaqueToken types.OpaqueToken
+    err := db.db.Get(&opaqueToken, "SELECT * FROM opaque_token_entity WHERE token = $1", token)
+    if err != nil {
+        return nil, err
+    }
+    return &opaqueToken, nil
 }
 
 func (db *PgDatabase) GetUserThroughFederatedIdentity(federated_id string) (*types.User, error) {
