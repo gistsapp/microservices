@@ -1,6 +1,7 @@
 package http
 
 import (
+	"github.com/gistsapp/api/auth/core"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -20,4 +21,17 @@ type HTTPErrorMessage struct {
 
 type HTTPMessage struct {
 	Message string `json:"message"`
+}
+type handler struct {
+	jwtService core.JWTService
+}
+
+func (h *handler) Register(app *fiber.App) {
+	panic("unimplemented")
+}
+
+func NewHandler(jwtService core.JWTService) Handler {
+	return &handler{
+		jwtService: jwtService,
+	}
 }

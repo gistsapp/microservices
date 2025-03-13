@@ -1,6 +1,6 @@
 package types
 
-import "github.com/golang-jwt/jwt"
+import "github.com/golang-jwt/jwt/v5"
 
 type User struct {
 	ID       string `json:"id" db:"user_id"`
@@ -32,7 +32,7 @@ type AuthTokens struct {
 
 type JWTClaims struct {
 	UserID string `json:"user_id"`
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 }
 
 type VerificationToken struct {
