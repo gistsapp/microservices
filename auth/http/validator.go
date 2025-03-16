@@ -23,24 +23,31 @@ type AuthLocalVerificationValidator struct {
 	Email string `json:"email" validate:"required,email"`
 }
 
-func (b *BaseValidator) Validate(c *fiber.Ctx) error {
-	validate := validator.New(validator.WithRequiredStructEnabled())
 
-	if err := c.BodyParser(b); err != nil {
+func (a *AuthLocalValidator) Validate(c *fiber.Ctx) error {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	if err := c.BodyParser(a); err != nil {
 		return err
 	}
 
-	if err := validate.Struct(b); err != nil {
+
+	if err := validate.Struct(a); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (a *AuthLocalValidator) Validate(c *fiber.Ctx) error {
-	return a.BaseValidator.Validate(c)
-}
-
 func (a *AuthLocalVerificationValidator) Validate(c *fiber.Ctx) error {
-	return a.BaseValidator.Validate(c)
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	if err := c.BodyParser(a); err != nil {
+		return err
+	}
+
+
+	if err := validate.Struct(a); err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -3,3 +3,6 @@ build:
 
 migrate: build
     BOOTSTRAP=true ./auth && rm ./auth
+
+docs:
+    swag init --parseDependency --parseInternal

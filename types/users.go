@@ -10,10 +10,10 @@ type User struct {
 }
 
 type FederatedIdentity struct {
-	ID       string `db:"federated_identity_id"`
-	UserID   string `db:"user_id"`
-	Provider string `db:"provider"`
-	Data     string `db:"data"`
+	ID       string `db:"federated_identity_id" json:"id"`
+	UserID   string `db:"user_id" json:"user_id"`
+	Provider string `db:"provider" json:"provider"`
+	Data     string `db:"data" json:"data"`
 }
 
 // an opaque token is a token that tied to a user and stored in the database.

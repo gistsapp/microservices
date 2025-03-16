@@ -29,6 +29,17 @@ const docTemplate = `{
                     "auth"
                 ],
                 "summary": "Authenticate with code",
+                "parameters": [
+                    {
+                        "description": "Email",
+                        "name": "email",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/http.AuthLocalValidator"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -55,6 +66,17 @@ const docTemplate = `{
                     "auth"
                 ],
                 "summary": "Verify auth token",
+                "parameters": [
+                    {
+                        "description": "Token",
+                        "name": "token",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/http.AuthLocalVerificationValidator"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -90,6 +112,41 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.HTTPErrorMessage"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/me": {
+            "get": {
+                "description": "Use this endpoint to introspect the token",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Introspect",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Authorization",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.HTTPUserIntrospection"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/http.HTTPErrorMessage"
                         }
@@ -133,6 +190,15 @@ const docTemplate = `{
                     "auth"
                 ],
                 "summary": "Authenticate with redirect",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Provider name",
+                        "name": "provider",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "302": {
                         "description": "Found",
@@ -183,6 +249,32 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "http.AuthLocalValidator": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "http.AuthLocalVerificationValidator": {
+            "type": "object",
+            "required": [
+                "email",
+                "token"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
         "http.HTTPErrorMessage": {
             "type": "object",
             "properties": {
@@ -206,6 +298,113 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "http.HTTPUserIntrospection": {
+            "type": "object",
+            "properties": {
+                "claims": {
+                    "$ref": "#/definitions/types.JWTClaims"
+                },
+                "federated_identity": {
+                    "$ref": "#/definitions/types.FederatedIdentity"
+                },
+                "user": {
+                    "$ref": "#/definitions/types.User"
+                }
+            }
+        },
+        "jwt.NumericDate": {
+            "type": "object",
+            "properties": {
+                "time.Time": {
+                    "type": "string"
+                }
+            }
+        },
+        "types.FederatedIdentity": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "types.JWTClaims": {
+            "type": "object",
+            "properties": {
+                "aud": {
+                    "description": "the ` + "`" + `aud` + "`" + ` (Audience) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "exp": {
+                    "description": "the ` + "`" + `exp` + "`" + ` (Expiration Time) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.4",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/jwt.NumericDate"
+                        }
+                    ]
+                },
+                "iat": {
+                    "description": "the ` + "`" + `iat` + "`" + ` (Issued At) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.6",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/jwt.NumericDate"
+                        }
+                    ]
+                },
+                "iss": {
+                    "description": "the ` + "`" + `iss` + "`" + ` (Issuer) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.1",
+                    "type": "string"
+                },
+                "jti": {
+                    "description": "the ` + "`" + `jti` + "`" + ` (JWT ID) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.7",
+                    "type": "string"
+                },
+                "nbf": {
+                    "description": "the ` + "`" + `nbf` + "`" + ` (Not Before) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.5",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/jwt.NumericDate"
+                        }
+                    ]
+                },
+                "sub": {
+                    "description": "the ` + "`" + `sub` + "`" + ` (Subject) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.2",
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "types.User": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "picture": {
+                    "type": "string"
+                },
+                "username": {
                     "type": "string"
                 }
             }

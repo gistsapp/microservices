@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 
 	"github.com/gistsapp/api/auth/config"
+	"github.com/gofiber/fiber/v2/log"
 	gomail "gopkg.in/mail.v2"
 )
 
@@ -30,8 +31,8 @@ func (e emailService) SendVerificationEmail(email string, token string) error {
 	<head></head>
 	<body>
 		<p>Hello,</p>
-		<p>Please click the following link to verify your email address:</p>
-		<p><a href="http://localhost:3000/verify?token=`+token+`">Verify Email</a></p>
+		<p>Please enter the following code to verify your email address:</p>
+		<p>`+token+`</p>
 		<p>If you didn't request this email, please ignore it.</p>
 	</body>
 </html>`)
@@ -40,5 +41,10 @@ func (e emailService) SendVerificationEmail(email string, token string) error {
 
 	d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 
-	return d.DialAndSend(m)
+	if err := d.DialAndSend(m); err != nil {
+		log.Error(err)
+		return err
+	}
+	log.Info("Email sent to " + email)
+	return nil
 }
