@@ -22,7 +22,6 @@ type authController struct {
 	config  *config.Config
 }
 
-
 func NewAuthController(service core.AuthService, config *config.Config) AuthController {
 	return authController{
 		service: service,
@@ -36,7 +35,7 @@ func NewAuthController(service core.AuthService, config *config.Config) AuthCont
 //	@Description	Use this endpoint to complete the OAuth2 flow
 //	@Tags			auth
 //	@Produce		json
-//	@Sucess			302 {string} redirect to the client app
+//	@Success		200	{object}	http.HTTPMessage
 //	@Failure		404	{object}	http.HTTPErrorMessage
 //	@Failure		400	{object}	http.HTTPErrorMessage
 //	@Router			/auth/{provider}/callback [get]
@@ -65,7 +64,7 @@ func (a authController) Callback() fiber.Handler {
 //	@Description	Use this endpoint to authenticate with redirect
 //	@Tags			auth
 //	@Produce		json
-//	@Sucess			302 {string} redirect to the client app
+//	@Success			302 {string} redirect to the client app
 //	@Failure		400	{object}	http.HTTPErrorMessage
 //	@Router			/auth/{provider} [get]
 func (a authController) Authenticate() fiber.Handler {
@@ -80,7 +79,7 @@ func (a authController) Authenticate() fiber.Handler {
 //	@Description	Use this endpoint to authenticate with code
 //	@Tags			auth
 //	@Produce		json
-//	@Sucess			200 {object} http.HTTPMessage
+//	@Success			200 {object} http.HTTPMessage
 //	@Failure		400	{object}	http.HTTPErrorMessage
 //	@Router			/auth/local/begin [post]
 func (a authController) LocalAuth() fiber.Handler {
@@ -109,7 +108,7 @@ func (a authController) LocalAuth() fiber.Handler {
 //	@Description	Use this endpoint to verify auth token
 //	@Tags			auth
 //	@Produce		json
-//	@Sucess			200 {object} http.HTTPTokens
+//	@Success			200 {object} http.HTTPTokens
 //	@Failure		400	{object}	http.HTTPErrorMessage
 //	@Router			/auth/local/verify [post]
 func (a authController) VerifyAuthToken() fiber.Handler {
@@ -148,7 +147,7 @@ func (a authController) VerifyAuthToken() fiber.Handler {
 //	@Description	Use this endpoint to renew access token
 //	@Tags			auth
 //	@Produce		json
-//	@Sucess			200 {object} http.HTTPTokens
+//	@Success			200 {object} http.HTTPTokens
 //	@Failure		400	{object}	http.HTTPErrorMessage
 //	@Router			/auth/renew [get]
 func (a authController) Renew() fiber.Handler {
@@ -179,7 +178,7 @@ func (a authController) Renew() fiber.Handler {
 //	@Description	Use this endpoint to logout (clear cookies)
 //	@Tags			auth
 //	@Produce		json
-//	@Sucess			302 {string} redirect to the client app
+//	@Success			302 {string} redirect to the client app
 //	@Failure		500	{object}	http.HTTPErrorMessage
 //	@Router			/auth/logout [get]
 func (a authController) Logout() fiber.Handler {

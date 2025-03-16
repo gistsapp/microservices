@@ -10,6 +10,7 @@ type Config struct {
 		ClientID     string `mapstructure:"client_id"`
 		ClientSecret string `mapstructure:"client_secret"` // Not asking for redirect URIs since we are not using oauth2
 		RedirectURI  string `mapstructure:"redirect_uri"`
+		Secret       string `mapstructure:"secret"`
 	}
 	AuthProviders AuthProviders `mapstructure:"auth_providers"`
 	Database struct {

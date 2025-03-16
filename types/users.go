@@ -3,10 +3,10 @@ package types
 import "github.com/golang-jwt/jwt/v5"
 
 type User struct {
-	ID       string `json:"id" db:"user_id"`
-	Username string `json:"username" db:"username"`
-	Email    string `json:"email" db:"email"`
-	Picture  string `json:"picture" db:"picture"`
+	ID       string `json:"id" db:"user_id" jwt:"user_id"`
+	Username string `json:"username" db:"username" jwt:"username"`
+	Email    string `json:"email" db:"email" jwt:"email"`
+	Picture  string `json:"picture" db:"picture" jwt:"picture"`
 }
 
 type FederatedIdentity struct {

@@ -4,6 +4,18 @@ definitions:
       error:
         type: string
     type: object
+  http.HTTPMessage:
+    properties:
+      message:
+        type: string
+    type: object
+  http.HTTPTokens:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    type: object
 info:
   contact:
     email: tristan-mihai.radulescu@etu.umontpellier.fr
@@ -19,6 +31,10 @@ paths:
       produces:
       - application/json
       responses:
+        "302":
+          description: Found
+          schema:
+            type: string
         "400":
           description: Bad Request
           schema:
@@ -32,6 +48,10 @@ paths:
       produces:
       - application/json
       responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.HTTPMessage'
         "400":
           description: Bad Request
           schema:
@@ -49,6 +69,10 @@ paths:
       produces:
       - application/json
       responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.HTTPMessage'
         "400":
           description: Bad Request
           schema:
@@ -62,6 +86,10 @@ paths:
       produces:
       - application/json
       responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.HTTPTokens'
         "400":
           description: Bad Request
           schema:
@@ -75,6 +103,10 @@ paths:
       produces:
       - application/json
       responses:
+        "302":
+          description: Found
+          schema:
+            type: string
         "500":
           description: Internal Server Error
           schema:
@@ -88,6 +120,10 @@ paths:
       produces:
       - application/json
       responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.HTTPTokens'
         "400":
           description: Bad Request
           schema:
