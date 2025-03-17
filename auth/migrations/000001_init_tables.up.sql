@@ -29,7 +29,7 @@ ALTER TABLE federated_identity ADD CONSTRAINT federated_identity_user_id_fkey FO
 
 CREATE TABLE IF NOT EXISTS verification_token(
   token VARCHAR(255) NOT NULL,
-  email VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL
 );
 
 ALTER TABLE verification_token ADD CONSTRAINT verification_token_email_key UNIQUE (email);

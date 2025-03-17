@@ -5,6 +5,7 @@ import (
 	"github.com/gistsapp/api/auth/core"
 	"github.com/gistsapp/api/auth/utils"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 )
 
 type AuthController interface {
@@ -15,18 +16,20 @@ type AuthController interface {
 	Renew() fiber.Handler
 	Logout() fiber.Handler
 	Register(app *fiber.App)
+	Introspect() fiber.Handler
 }
 
 type authController struct {
-	service core.AuthService
-	config  *config.Config
+	service    core.AuthService
+	jwtService core.JWTService
+	config     *config.Config
 }
 
-
-func NewAuthController(service core.AuthService, config *config.Config) AuthController {
+func NewAuthController(service core.AuthService, config *config.Config, jwtService core.JWTService) AuthController {
 	return authController{
-		service: service,
-		config:  config,
+		service:    service,
+		config:     config,
+		jwtService: jwtService,
 	}
 }
 
@@ -36,7 +39,7 @@ func NewAuthController(service core.AuthService, config *config.Config) AuthCont
 //	@Description	Use this endpoint to complete the OAuth2 flow
 //	@Tags			auth
 //	@Produce		json
-//	@Sucess			302 {string} redirect to the client app
+//	@Success		200	{object}	http.HTTPMessage
 //	@Failure		404	{object}	http.HTTPErrorMessage
 //	@Failure		400	{object}	http.HTTPErrorMessage
 //	@Router			/auth/{provider}/callback [get]
@@ -65,9 +68,10 @@ func (a authController) Callback() fiber.Handler {
 //	@Description	Use this endpoint to authenticate with redirect
 //	@Tags			auth
 //	@Produce		json
-//	@Sucess			302 {string} redirect to the client app
+//	@Success			302 {string} redirect to the client app
 //	@Failure		400	{object}	http.HTTPErrorMessage
 //	@Router			/auth/{provider} [get]
+//	@Param			provider	path	string	true	"Provider name"
 func (a authController) Authenticate() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		return a.service.AuthenticateWithRedirect(c)
@@ -76,13 +80,14 @@ func (a authController) Authenticate() fiber.Handler {
 
 // LocalAuth godoc
 //
-//	@Summary		Authenticate with code
-//	@Description	Use this endpoint to authenticate with code
-//	@Tags			auth
-//	@Produce		json
-//	@Sucess			200 {object} http.HTTPMessage
-//	@Failure		400	{object}	http.HTTPErrorMessage
-//	@Router			/auth/local/begin [post]
+//		@Summary		Authenticate with code
+//		@Description	Use this endpoint to authenticate with code
+//		@Tags			auth
+//	 @Param			email	body	http.AuthLocalValidator	true	"Email"
+//		@Produce		json
+//		@Success			200 {object} http.HTTPMessage
+//		@Failure		400	{object}	http.HTTPErrorMessage
+//		@Router			/auth/local/begin [post]
 func (a authController) LocalAuth() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		e := new(AuthLocalValidator)
@@ -105,13 +110,14 @@ func (a authController) LocalAuth() fiber.Handler {
 
 // VerifyAuthToken godoc
 //
-//	@Summary		Verify auth token
-//	@Description	Use this endpoint to verify auth token
-//	@Tags			auth
-//	@Produce		json
-//	@Sucess			200 {object} http.HTTPTokens
-//	@Failure		400	{object}	http.HTTPErrorMessage
-//	@Router			/auth/local/verify [post]
+//		@Summary		Verify auth token
+//		@Description	Use this endpoint to verify auth token
+//		@Tags			auth
+//	 @Param			token	body	http.AuthLocalVerificationValidator	true	"Token"
+//		@Produce		json
+//		@Success			200 {object} http.HTTPTokens
+//		@Failure		400	{object}	http.HTTPErrorMessage
+//		@Router			/auth/local/verify [post]
 func (a authController) VerifyAuthToken() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		e := new(AuthLocalVerificationValidator)
@@ -122,6 +128,7 @@ func (a authController) VerifyAuthToken() fiber.Handler {
 			})
 		}
 
+		log.Info(a.service)
 		tokens, err := a.service.VerifyAuthToken(e.Token, e.Email)
 
 		if err != nil {
@@ -148,7 +155,7 @@ func (a authController) VerifyAuthToken() fiber.Handler {
 //	@Description	Use this endpoint to renew access token
 //	@Tags			auth
 //	@Produce		json
-//	@Sucess			200 {object} http.HTTPTokens
+//	@Success			200 {object} http.HTTPTokens
 //	@Failure		400	{object}	http.HTTPErrorMessage
 //	@Router			/auth/renew [get]
 func (a authController) Renew() fiber.Handler {
@@ -179,7 +186,7 @@ func (a authController) Renew() fiber.Handler {
 //	@Description	Use this endpoint to logout (clear cookies)
 //	@Tags			auth
 //	@Produce		json
-//	@Sucess			302 {string} redirect to the client app
+//	@Success			302 {string} redirect to the client app
 //	@Failure		500	{object}	http.HTTPErrorMessage
 //	@Router			/auth/logout [get]
 func (a authController) Logout() fiber.Handler {
@@ -190,11 +197,40 @@ func (a authController) Logout() fiber.Handler {
 	}
 }
 
+// Introspect godoc
+//
+//	@Summary		Introspect
+//	@Description	Use this endpoint to introspect the token
+//	@Tags			auth
+//	@Produce		json
+//	@Success			200 {object} http.HTTPUserIntrospection
+//	@Failure		400	{object}	http.HTTPErrorMessage
+//	@Router			/auth/me [get]
+//  @Param			Authorization	header	string	true	"Authorization"
+func (a authController) Introspect() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		token := c.Locals("access_token").(string)
+		user, federated_identity, claims, err := a.service.Introspect(token)
+		if err != nil {
+			return c.Status(fiber.ErrUnauthorized.Code).JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		}
+		c.JSON(HTTPUserIntrospection{
+			User:              user,
+			Claims:            claims,
+			FederatedIdentity: federated_identity,
+		})
+		return nil
+	}
+}
 func (a authController) Register(app *fiber.App) {
-	app.Get("/auth/:provider/callback", a.Callback())
-	app.Get("/auth/:provider", a.Authenticate())
 	app.Post("/auth/local/begin", a.LocalAuth())
 	app.Post("/auth/local/verify", a.VerifyAuthToken())
 	app.Get("/auth/renew", a.Renew())
 	app.Get("/auth/logout", a.Logout())
+	protected := app.Group("/auth", JWTMiddleware(a.jwtService))
+	protected.Get("/me", a.Introspect())
+	app.Get("/auth/:provider/callback", a.Callback())
+	app.Get("/auth/:provider", a.Authenticate())
 }

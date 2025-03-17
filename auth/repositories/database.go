@@ -25,6 +25,7 @@ type Database interface {
 	GetUserThroughFederatedIdentity(federated_id string) (*types.User, error)
 	CreateFederatedIdentity(federated_identity *types.FederatedIdentity) (*types.FederatedIdentity, error)
 	GetFederatedIdentityByID(id string) (*types.FederatedIdentity, error)
+	GetFederatedIdentityByUserID(id string) (*types.FederatedIdentity, error)
 	DeleteFederatedIdentity(id string) error
 	CreateOpaqueToken(opaque_token *types.OpaqueToken) (*types.OpaqueToken, error)
 	GetOpaqueTokenByID(id string) (*types.OpaqueToken, error)
@@ -93,7 +94,7 @@ func (db *PgDatabase) CreateUser(user *types.User) (*types.User, error) {
 
 func (db *PgDatabase) GetUserByID(id string) (*types.User, error) {
 	var user types.User
-	err := db.db.Get(&user, "SELECT * FROM user_entity WHERE id = $1", id)
+	err := db.db.Get(&user, "SELECT * FROM user_entity WHERE user_id = $1", id)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +111,7 @@ func (db *PgDatabase) DeleteUser(id string) error {
 
 func (db *PgDatabase) UpdateUser(user *types.User) (*types.User, error) {
 	var updated_user types.User
-	err := db.db.Get(&updated_user, "UPDATE user_entity SET username = $1, email = $2, picture = $3 WHERE id = $4", user.Username, user.Email, user.Picture, user.ID)
+	err := db.db.Get(&updated_user, "UPDATE user_entity SET username = $1, email = $2, picture = $3 WHERE user_id = $4", user.Username, user.Email, user.Picture, user.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -119,13 +120,13 @@ func (db *PgDatabase) UpdateUser(user *types.User) (*types.User, error) {
 
 func (db *PgDatabase) CreateFederatedIdentity(federated_identity *types.FederatedIdentity) (*types.FederatedIdentity, error) {
 	var created_federated_identity types.FederatedIdentity // TODO: change to federated_identity_id
-	err := db.db.Get(&created_federated_identity, "INSERT INTO federated_identity_entity (id, user_id, provider, data) VALUES ($1, $2, $3, $4) RETURNING *", federated_identity.ID, federated_identity.UserID, federated_identity.Provider, federated_identity.Data)
+	err := db.db.Get(&created_federated_identity, "INSERT INTO federated_identity (federated_identity_id, user_id, provider, data) VALUES ($1, $2, $3, $4) RETURNING *", federated_identity.ID, federated_identity.UserID, federated_identity.Provider, federated_identity.Data)
 	return &created_federated_identity, err
 }
 
 func (db *PgDatabase) GetFederatedIdentityByID(id string) (*types.FederatedIdentity, error) {
 	var federated_identity types.FederatedIdentity
-	err := db.db.Get(&federated_identity, "SELECT * FROM federated_identity_entity WHERE id = $1", id)
+	err := db.db.Get(&federated_identity, "SELECT * FROM federated_identity WHERE federated_identity_id = $1", id)
 	if err != nil {
 		return nil, err
 	}
@@ -133,16 +134,25 @@ func (db *PgDatabase) GetFederatedIdentityByID(id string) (*types.FederatedIdent
 }
 
 func (db *PgDatabase) DeleteFederatedIdentity(id string) error {
-	_, err := db.db.Exec("DELETE FROM federated_identity_entity WHERE id = $1", id)
+	_, err := db.db.Exec("DELETE FROM federated_identity WHERE federated_identity_id = $1", id)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
+func (db *PgDatabase) GetFederatedIdentityByUserID(id string) (*types.FederatedIdentity, error) {
+	var federated_identity types.FederatedIdentity
+	err := db.db.Get(&federated_identity, "SELECT * FROM federated_identity WHERE user_id = $1", id)
+	if err != nil {
+		return nil, err
+	}
+	return &federated_identity, nil
+}
+
 func (db *PgDatabase) CreateOpaqueToken(opaque_token *types.OpaqueToken) (*types.OpaqueToken, error) {
 	var created_opaque_token types.OpaqueToken
-	err := db.db.Get(&created_opaque_token, "INSERT INTO opaque_token_entity (id, user_id, token, expires_at) VALUES ($1, $2, $3, $4) RETURNING *", opaque_token.ID, opaque_token.UserID, opaque_token.Token, opaque_token.ExpiresAt)
+	err := db.db.Get(&created_opaque_token, "INSERT INTO token (token_id, user_id, token, expires_at) VALUES ($1, $2, $3, $4) RETURNING *", opaque_token.ID, opaque_token.UserID, opaque_token.Token, opaque_token.ExpiresAt)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +161,7 @@ func (db *PgDatabase) CreateOpaqueToken(opaque_token *types.OpaqueToken) (*types
 
 func (db *PgDatabase) GetOpaqueTokenByID(id string) (*types.OpaqueToken, error) {
 	var opaque_token types.OpaqueToken
-	err := db.db.Get(&opaque_token, "SELECT * FROM opaque_token_entity WHERE id = $1", id)
+	err := db.db.Get(&opaque_token, "SELECT * FROM token WHERE token_id = $1", id)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +169,7 @@ func (db *PgDatabase) GetOpaqueTokenByID(id string) (*types.OpaqueToken, error) 
 }
 
 func (db *PgDatabase) DeleteOpaqueToken(id string) error {
-	_, err := db.db.Exec("DELETE FROM opaque_token_entity WHERE id = $1", id)
+	_, err := db.db.Exec("DELETE FROM token WHERE token_id = $1", id)
 	if err != nil {
 		return err
 	}
@@ -168,7 +178,7 @@ func (db *PgDatabase) DeleteOpaqueToken(id string) error {
 
 func (db *PgDatabase) GetOpaqueTokenByUserEmail(email string) (*types.OpaqueToken, error) {
 	var opaque_token types.OpaqueToken
-	err := db.db.Get(&opaque_token, "SELECT * FROM opaque_token_entity WHERE user_id = (SELECT id FROM user_entity WHERE email = $1)", email)
+	err := db.db.Get(&opaque_token, "SELECT * FROM token WHERE user_id = (SELECT user_id FROM user_entity WHERE email = $1)", email)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +187,7 @@ func (db *PgDatabase) GetOpaqueTokenByUserEmail(email string) (*types.OpaqueToke
 
 func (db *PgDatabase) GetOpaqueTokenByToken(token string) (*types.OpaqueToken, error) {
     var opaqueToken types.OpaqueToken
-    err := db.db.Get(&opaqueToken, "SELECT * FROM opaque_token_entity WHERE token = $1", token)
+    err := db.db.Get(&opaqueToken, "SELECT * FROM token WHERE token = $1", token)
     if err != nil {
         return nil, err
     }

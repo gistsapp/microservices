@@ -3,17 +3,17 @@ package types
 import "github.com/golang-jwt/jwt/v5"
 
 type User struct {
-	ID       string `json:"id" db:"user_id"`
-	Username string `json:"username" db:"username"`
-	Email    string `json:"email" db:"email"`
-	Picture  string `json:"picture" db:"picture"`
+	ID       string `json:"id" db:"user_id" jwt:"user_id"`
+	Username string `json:"username" db:"username" jwt:"username"`
+	Email    string `json:"email" db:"email" jwt:"email"`
+	Picture  string `json:"picture" db:"picture" jwt:"picture"`
 }
 
 type FederatedIdentity struct {
-	ID       string `db:"federated_identity_id"`
-	UserID   string `db:"user_id"`
-	Provider string `db:"provider"`
-	Data     string `db:"data"`
+	ID       string `db:"federated_identity_id" json:"id"`
+	UserID   string `db:"user_id" json:"user_id"`
+	Provider string `db:"provider" json:"provider"`
+	Data     string `db:"data" json:"data"`
 }
 
 // an opaque token is a token that tied to a user and stored in the database.

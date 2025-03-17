@@ -11,6 +11,7 @@ import (
 	"github.com/gistsapp/api/auth/utils"
 	"github.com/gistsapp/api/types"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/providers/github"
@@ -19,14 +20,15 @@ import (
 )
 
 type AuthService interface {
-	RegisterProviders() //done
-	IsAuthenticated(token string) (*types.JWTClaims, error) //done
-	Renew(token string) (*types.AuthTokens, error) //done
-	AuthenticateWithRedirect(c *fiber.Ctx) error //done
+	RegisterProviders()                                                  //done
+	IsAuthenticated(token string) (*types.JWTClaims, error)              //done
+	Renew(token string) (*types.AuthTokens, error)                       //done
+	AuthenticateWithRedirect(c *fiber.Ctx) error                         //done
 	AuthenticateWithCode(email string) (*types.VerificationToken, error) //done
 	VerifyAuthToken(code string, email string) (*types.AuthTokens, error)
-	Callback(c *fiber.Ctx) (*types.AuthTokens, error) //done
+	Callback(c *fiber.Ctx) (*types.AuthTokens, error)               //done
 	RegisterUser(options *RegistrationOptions) (*types.User, error) //done
+	Introspect(token string) (*types.User, *types.FederatedIdentity, *types.JWTClaims, error)
 }
 
 type RegistrationOptions struct {
@@ -44,7 +46,7 @@ type authService struct {
 
 func NewAuthService(providers_config config.AuthProviders, jwtService JWTService, userService UserService, database repositories.Database, emailService repositories.EmailService) AuthService {
 	providers := []goth.Provider{}
-	
+
 	for _, provider := range providers_config {
 		switch provider.Name {
 		case "github":
@@ -82,28 +84,20 @@ func (a *authService) IsAuthenticated(token string) (*types.JWTClaims, error) {
 }
 
 func (a *authService) Renew(token string) (*types.AuthTokens, error) {
-    claims, err := a.jwtService.VerifyAccessToken(token)
+	claims, err := a.jwtService.VerifyAccessToken(token)
 
-    if err != jwt.ErrTokenExpired {
-        return nil, err
-    }
+	if err != jwt.ErrTokenExpired {
+		return nil, err
+	}
 
-    refreshToken, err := a.jwtService.CreateRefreshToken(claims.UserID)
 
-    if err != nil {
-        return nil, err
-    }
+	user, err := a.userService.GetUserByID(claims.UserID)
 
-    accessToken, err := a.jwtService.CreateAccessToken(claims)
+	if err != nil {
+		return nil, err
+	}
 
-    if err != nil {
-        return nil, err
-    }
-
-    return &types.AuthTokens{
-        AccessToken:  accessToken,
-        RefreshToken: refreshToken,
-    }, nil
+	return a.generateTokens(user)
 }
 
 func (a *authService) Callback(c *fiber.Ctx) (*types.AuthTokens, error) {
@@ -112,7 +106,6 @@ func (a *authService) Callback(c *fiber.Ctx) (*types.AuthTokens, error) {
 	if provider != "github" && provider != "google" {
 		return nil, UnkownProvider
 	}
-
 
 	auth_user, err := goth_fiber.CompleteUserAuth(c)
 
@@ -148,23 +141,32 @@ func (a *authService) firstLogin(auth_user goth.User, provider string) (*types.U
 }
 
 func (a *authService) generateTokens(user *types.User) (*types.AuthTokens, error) {
-    claims := &types.JWTClaims{
-        UserID: user.ID,
-    }
+	log.Info(user)
+	identity, err := a.database.GetFederatedIdentityByUserID(user.ID)
+	log.Info(identity)
+	if err != nil {
+		return nil, err
+	}
+	claims := &types.JWTClaims{
+		UserID: user.ID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject: identity.ID,
+		},
+	}
 
-    access_token, err := a.jwtService.CreateAccessToken(claims)
-    if err != nil {
-        return nil, err
-    }
-	
-    refresh_token, err := a.jwtService.CreateRefreshToken(user.ID)
-    if err != nil {
-        return nil, err
-    }
-    return &types.AuthTokens{
-        AccessToken:  access_token,
-        RefreshToken: refresh_token,
-    }, nil
+	access_token, err := a.jwtService.CreateAccessToken(claims)
+	if err != nil {
+		return nil, err
+	}
+
+	refresh_token, err := a.jwtService.CreateRefreshToken(user.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &types.AuthTokens{
+		AccessToken:  access_token,
+		RefreshToken: refresh_token,
+	}, nil
 }
 
 func withOIDCUsername(user goth.User) *RegistrationOptions {
@@ -203,10 +205,10 @@ func (a *authService) RegisterUser(options *RegistrationOptions) (*types.User, e
 		return nil, err
 	}
 	federated_identity := types.FederatedIdentity{
-		ID:         auth_user.UserID,
-		Data:       string(data),
-		Provider:   auth_user.Provider,
-		UserID:     user_data.ID,
+		ID:       auth_user.UserID,
+		Data:     string(data),
+		Provider: auth_user.Provider,
+		UserID:   user_data.ID,
 	}
 
 	_, err = a.database.CreateFederatedIdentity(&federated_identity)
@@ -214,6 +216,7 @@ func (a *authService) RegisterUser(options *RegistrationOptions) (*types.User, e
 }
 
 func (a *authService) AuthenticateWithCode(email string) (*types.VerificationToken, error) {
+	log.Info("Authenticating ", email)
 	token_value := utils.GenToken(6)
 	token_data := types.VerificationToken{
 		Token: token_value,
@@ -235,7 +238,10 @@ func (a *authService) AuthenticateWithCode(email string) (*types.VerificationTok
 		return a.AuthenticateWithCode(email)
 	}
 
-	a.emailService.SendVerificationEmail(email, token_value)
+	log.Info(token_value)
+	if err := a.emailService.SendVerificationEmail(email, token_value); err != nil {
+		return nil, ErrConfirmationEmail
+	}
 
 	return token, nil
 }
@@ -249,30 +255,60 @@ func (a *authService) AuthenticateWithRedirect(c *fiber.Ctx) error {
 }
 
 func (a *authService) VerifyAuthToken(code string, email string) (*types.AuthTokens, error) {
-    err := a.database.DeleteVerificationToken(email, code)
-    if err == sql.ErrNoRows {
-        return nil, ErrCantCompleteAuth
-    }
+	err := a.database.DeleteVerificationToken(email, code)
+	if err == sql.ErrNoRows {
+		return nil, ErrCantCompleteAuth
+	}
+	//now we finish user registration
 
-    //now we finish user registration
+	goth_user := goth.User{
+		UserID:    email,
+		Email:     email,
+		Provider:  "local",
+		AvatarURL: "https://vercel.com/api/www/avatar/?u=" + email + "&s=80",
+	}
 
-    goth_user := goth.User{
-        UserID:   email,
-        Email:    email,
-        Provider: "local",
-        AvatarURL:  "https://vercel.com/api/www/avatar/?u=" + email + "&s=80",
-    }
+	federated_identity, err := a.database.GetFederatedIdentityByID(goth_user.UserID)
+	log.Info(err)
+	var user *types.User
+	if err == sql.ErrNoRows { // user not found, create user because first connection
+		user, err = a.RegisterUser(withEmailPrefix(goth_user))
+	} else {
+		user, err = a.userService.GetUserByID(federated_identity.UserID)
+	}
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	return a.generateTokens(user)
+}
 
-    federated_identity, err := a.database.GetFederatedIdentityByID(goth_user.UserID)
-    var user *types.User
-    if err == sql.ErrNoRows { // user not found, create user because first connection
-        user, err = a.RegisterUser(withEmailPrefix(goth_user))
-    }else {
-        user, err = a.userService.GetUserByID(federated_identity.UserID)
-    }
-    return a.generateTokens(user)
+func (a *authService) Introspect(token string) (*types.User, *types.FederatedIdentity, *types.JWTClaims, error) {
+	claims, err := a.jwtService.VerifyAccessToken(token)
+	if err != nil {
+		log.Error("Couldn't verify access token", err)
+		return nil, nil, nil, err
+	}
+	user, err := a.userService.GetUserByID(claims.UserID)
+	if err != nil {
+		log.Error("Couldn't get user", err)
+		return nil, nil, nil, err
+	}
+	subject, err := claims.GetSubject()
+	if err != nil {
+		log.Error("Couldn't get subject", err)
+		return nil, nil, nil, err
+	}
+	federated_identity, err := a.database.GetFederatedIdentityByID(subject)
+	if err != nil {
+		log.Error("Couldn't get federated identity", err)
+		return nil, nil, nil, err
+	}
+	
+	return user, federated_identity, claims, nil
 }
 
 var ErrCantCompleteAuth error = errors.New("Couldn't complete auth")
 var ErrInvalidCode error = errors.New("Invalid verification code")
 var UnkownProvider error = errors.New("Unkown provider")
+var ErrConfirmationEmail error = errors.New("Confirmation email could not be sent")
